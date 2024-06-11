@@ -16,5 +16,8 @@ func main() {
 	g.Post("/hello", func(ctx *context.Context) {
 		fmt.Fprintf(ctx.W, "<h1>Welcome to Gjango</h1> <p>This is a POST request and you have successfully initiate the Gjango web framework</p>")
 	})
+	g.Get("/get/:id", func(ctx *context.Context) {
+		fmt.Fprintf(ctx.W, "<h1>Welcome to Gjango</h1> <p>This is a GET request and you get user info path variable")
+	})
 	engine.Run()
 }

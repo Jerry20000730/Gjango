@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/Jerry20000730/Gjango/web/Constant"
 	"github.com/Jerry20000730/Gjango/web/Context"
+	"github.com/Jerry20000730/Gjango/web/Logic"
+	"github.com/Jerry20000730/Gjango/web/Utils"
 	"log"
 	"net/http"
 	"strconv"
@@ -24,6 +26,7 @@ type routerGroup struct {
 	groupName       string
 	handleFuncMap   map[string]map[string]Handler
 	handleMethodMap map[string][]string
+	treeNode        *Logic.TreeNode
 }
 
 // NewGroup create a new group of router
@@ -32,6 +35,7 @@ func (r *router) NewGroup(name string) *routerGroup {
 		groupName:       name,
 		handleFuncMap:   make(map[string]map[string]Handler),
 		handleMethodMap: make(map[string][]string),
+		treeNode:        &Logic.TreeNode{Name: "/", Children: make([]*Logic.TreeNode, 0)},
 	}
 	r.routerGroups = append(r.routerGroups, g)
 	return g
@@ -48,6 +52,7 @@ func (r *routerGroup) bind(name string, method string, handler Handler) {
 	}
 	r.handleFuncMap[name][method] = handler
 	r.handleMethodMap[method] = append(r.handleMethodMap[method], name)
+	r.treeNode.Put(name)
 }
 
 // Any function allows the binding of
@@ -102,31 +107,32 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	method := r.Method
 	groups := e.Router.routerGroups
 	for _, g := range groups {
-		for name, methodHandlerIndex := range g.handleFuncMap {
-			url := "/" + g.groupName + name
-			// if the router is matched
-			if r.RequestURI == url {
-				ctx := &context.Context{
-					W: w,
-					R: r,
-				}
+		// to get the name under the group, like /hello, /get/1 so that it can be found
+		// in the tree
+		routerName := Utils.SubStringLast(r.RequestURI, "/"+g.groupName)
+		node := g.treeNode.Get(routerName)
+		if node != nil {
+			// route is found
+			ctx := &context.Context{
+				W: w,
+				R: r,
+			}
 
-				// 1. check if it is ANY method matching
-				if handle, ok := methodHandlerIndex[Constant.ANY]; ok {
-					handle(ctx)
-					return
-				}
-
-				// 2. check if it is other method matching
-				if handle, ok := methodHandlerIndex[method]; ok {
-					handle(ctx)
-					return
-				}
-				// if URL exists, but the method does not, return 405
-				w.WriteHeader(http.StatusMethodNotAllowed)
-				fmt.Fprintf(w, "%s [%s] is not allowed\n", r.RequestURI, method)
+			// 1. check if it is ANY method matching
+			if handle, ok := g.handleFuncMap[node.Path][Constant.ANY]; ok {
+				handle(ctx)
 				return
 			}
+
+			// 2. check if it is other method matching
+			if handle, ok := g.handleFuncMap[node.Path][method]; ok {
+				handle(ctx)
+				return
+			}
+			// if URL exists, but the method does not, return 405
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			fmt.Fprintf(w, "%s [%s] is not allowed\n", r.RequestURI, method)
+			return
 		}
 	}
 	// if the URL is not found, and the method, return 404
