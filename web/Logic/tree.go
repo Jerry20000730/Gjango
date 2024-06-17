@@ -8,6 +8,7 @@ type TreeNode struct {
 	Name     string
 	Path     string
 	Children []*TreeNode
+	IsEnd    bool
 }
 
 // put path: /user/get/:id
@@ -27,9 +28,14 @@ func (t *TreeNode) Put(path string) {
 			}
 		}
 		if !isMatch {
+			isEnd := false
+			if index == len(strs)-1 {
+				isEnd = true
+			}
 			node := &TreeNode{
 				Name:     name,
 				Children: make([]*TreeNode, 0),
+				IsEnd:    isEnd,
 			}
 			children = append(children, node)
 			t.Children = children
@@ -66,6 +72,8 @@ func (t *TreeNode) Get(path string) *TreeNode {
 			for _, node := range children {
 				// /user/**
 				if node.Name == "**" {
+					fullPath += "/" + node.Name
+					node.Path = fullPath
 					return node
 				}
 			}

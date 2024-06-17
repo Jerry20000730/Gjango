@@ -14,6 +14,10 @@ import (
 // Handler the abstract backend logic function when router match the pattern of the URL
 type Handler func(cts *context.Context)
 
+// MiddlewareHandler the abstract backend logic function when the middleware is applied
+// to the existing handle function
+type MiddlewareHandler func(handler Handler) Handler
+
 // router the struct for web router
 type router struct {
 	routerGroups []*routerGroup
@@ -27,6 +31,10 @@ type routerGroup struct {
 	handleFuncMap   map[string]map[string]Handler
 	handleMethodMap map[string][]string
 	treeNode        *Logic.TreeNode
+
+	// for middlewares
+	Middlewares   []MiddlewareHandler
+	middlewareMap map[string]map[string][]MiddlewareHandler
 }
 
 // NewGroup create a new group of router
@@ -55,6 +63,21 @@ func (r *routerGroup) bind(name string, method string, handler Handler) {
 	r.treeNode.Put(name)
 }
 
+func (r *routerGroup) MiddlewareBind(middlewareHandler ...MiddlewareHandler) {
+	r.Middlewares = append(r.Middlewares, middlewareHandler...)
+}
+
+// processHandler is a process function of how the handler actually goes, along with middlewares
+func (r *routerGroup) processHandler(ctx *context.Context, handler Handler) {
+	// middlewares
+	if r.Middlewares != nil {
+		for _, middlewareFunc := range r.Middlewares {
+			handler = middlewareFunc(handler)
+		}
+	}
+	handler(ctx)
+}
+
 // Any function allows the binding of
 // 1) URL and handler
 // 2) URL and request method "ANY"
@@ -74,6 +97,41 @@ func (r *routerGroup) Get(name string, handler Handler) {
 // 2) URL and HTTP request method "POST"
 func (r *routerGroup) Post(name string, handler Handler) {
 	r.bind(name, Constant.POST, handler)
+}
+
+// Delete function allows the binding of
+// 1) URL and handler
+// 2) URL and HTTP request method "Delete"
+func (r *routerGroup) Delete(name string, handler Handler) {
+	r.bind(name, Constant.DELETE, handler)
+}
+
+// Put function allows the binding of
+// 1) URL and handler
+// 2) URL and HTTP request method "Put"
+func (r *routerGroup) Put(name string, handler Handler) {
+	r.bind(name, Constant.PUT, handler)
+}
+
+// Patch function allows the binding of
+// 1) URL and handler
+// 2) URL and HTTP request method "Patch"
+func (r *routerGroup) Patch(name string, handler Handler) {
+	r.bind(name, Constant.PATCH, handler)
+}
+
+// Options function allows the binding of
+// 1) URL and handler
+// 2) URL and HTTP request method "Options"
+func (r *routerGroup) Options(name string, handler Handler) {
+	r.bind(name, Constant.OPTIONS, handler)
+}
+
+// Head function allows the binding of
+// 1) URL and handler
+// 2) URL and HTTP request method "Head"
+func (r *routerGroup) Head(name string, handler Handler) {
+	r.bind(name, Constant.HEAD, handler)
 }
 
 // Engine the main engine for web framework
@@ -104,6 +162,10 @@ func (e *Engine) GetPort() string {
 }
 
 func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	e.httpRequestHandle(w, r)
+}
+
+func (e *Engine) httpRequestHandle(w http.ResponseWriter, r *http.Request) {
 	method := r.Method
 	groups := e.Router.routerGroups
 	for _, g := range groups {
@@ -111,7 +173,7 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// in the tree
 		routerName := Utils.SubStringLast(r.RequestURI, "/"+g.groupName)
 		node := g.treeNode.Get(routerName)
-		if node != nil {
+		if node != nil && node.IsEnd {
 			// route is found
 			ctx := &context.Context{
 				W: w,
@@ -120,24 +182,24 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			// 1. check if it is ANY method matching
 			if handle, ok := g.handleFuncMap[node.Path][Constant.ANY]; ok {
-				handle(ctx)
+				g.processHandler(ctx, handle)
 				return
 			}
 
 			// 2. check if it is other method matching
 			if handle, ok := g.handleFuncMap[node.Path][method]; ok {
-				handle(ctx)
+				g.processHandler(ctx, handle)
 				return
 			}
 			// if URL exists, but the method does not, return 405
 			w.WriteHeader(http.StatusMethodNotAllowed)
-			fmt.Fprintf(w, "%s [%s] is not allowed\n", r.RequestURI, method)
+			_, _ = fmt.Fprintf(w, "%s [%s] is not allowed\n", r.RequestURI, method)
 			return
 		}
 	}
 	// if the URL is not found, and the method, return 404
 	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprintf(w, "%s [%s] is not found\n", r.RequestURI, method)
+	_, _ = fmt.Fprintf(w, "%s [%s] is not found\n", r.RequestURI, method)
 }
 
 func (e *Engine) Run() {
