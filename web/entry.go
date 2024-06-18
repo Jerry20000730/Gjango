@@ -44,94 +44,109 @@ func (r *router) NewGroup(name string) *routerGroup {
 		handleFuncMap:   make(map[string]map[string]Handler),
 		handleMethodMap: make(map[string][]string),
 		treeNode:        &Logic.TreeNode{Name: "/", Children: make([]*Logic.TreeNode, 0)},
+		Middlewares:     make([]MiddlewareHandler, 0),
+		middlewareMap:   make(map[string]map[string][]MiddlewareHandler),
 	}
 	r.routerGroups = append(r.routerGroups, g)
 	return g
 }
 
 // bind function is a generic function to bind the name and the method and the handle function
-func (r *routerGroup) bind(name string, method string, handler Handler) {
+// the bind function support bind function to specific router group and request method
+// it also bind middleware functions to specific router group and specific request method
+func (r *routerGroup) bind(name string, method string, handler Handler, middlewareHandler ...MiddlewareHandler) {
 	if _, ok := r.handleFuncMap[name]; !ok {
 		r.handleFuncMap[name] = make(map[string]Handler)
+		r.middlewareMap[name] = make(map[string][]MiddlewareHandler)
 	}
 	// check if the group name has already bind the designated request method
 	if _, ok := r.handleFuncMap[name][method]; ok {
 		panic("[ERROR] Repeated binding of request method [" + method + "] and the function")
 	}
 	r.handleFuncMap[name][method] = handler
+	r.middlewareMap[name][method] = append(r.middlewareMap[name][method], middlewareHandler...)
 	r.handleMethodMap[method] = append(r.handleMethodMap[method], name)
 	r.treeNode.Put(name)
 }
 
-func (r *routerGroup) MiddlewareBind(middlewareHandler ...MiddlewareHandler) {
+func (r *routerGroup) MiddlewareRegister(middlewareHandler ...MiddlewareHandler) {
 	r.Middlewares = append(r.Middlewares, middlewareHandler...)
 }
 
 // processHandler is a process function of how the handler actually goes, along with middlewares
-func (r *routerGroup) processHandler(ctx *context.Context, handler Handler) {
-	// middlewares
+func (r *routerGroup) processHandler(name string, method string, ctx *context.Context, handler Handler) {
+	// router-group general middlewares
 	if r.Middlewares != nil {
 		for _, middlewareFunc := range r.Middlewares {
 			handler = middlewareFunc(handler)
 		}
 	}
+
+	// router-group request method specific middlewares
+	routerMiddlewares := r.middlewareMap[name][method]
+	if routerMiddlewares != nil {
+		for _, middlewareFunc := range routerMiddlewares {
+			handler = middlewareFunc(handler)
+		}
+	}
+
 	handler(ctx)
 }
 
 // Any function allows the binding of
 // 1) URL and handler
 // 2) URL and request method "ANY"
-func (r *routerGroup) Any(name string, handler Handler) {
-	r.bind(name, Constant.ANY, handler)
+func (r *routerGroup) Any(name string, handler Handler, middlewareHandler ...MiddlewareHandler) {
+	r.bind(name, Constant.ANY, handler, middlewareHandler...)
 }
 
 // Get function allows the binding of
 // 1) URL and handler
 // 2) URL and HTTP request method "GET"
-func (r *routerGroup) Get(name string, handler Handler) {
-	r.bind(name, Constant.GET, handler)
+func (r *routerGroup) Get(name string, handler Handler, middlewareHandler ...MiddlewareHandler) {
+	r.bind(name, Constant.GET, handler, middlewareHandler...)
 }
 
 // Post function allows the binding of
 // 1) URL and handler
 // 2) URL and HTTP request method "POST"
-func (r *routerGroup) Post(name string, handler Handler) {
-	r.bind(name, Constant.POST, handler)
+func (r *routerGroup) Post(name string, handler Handler, middlewareHandler ...MiddlewareHandler) {
+	r.bind(name, Constant.POST, handler, middlewareHandler...)
 }
 
 // Delete function allows the binding of
 // 1) URL and handler
 // 2) URL and HTTP request method "Delete"
-func (r *routerGroup) Delete(name string, handler Handler) {
-	r.bind(name, Constant.DELETE, handler)
+func (r *routerGroup) Delete(name string, handler Handler, middlewareHandler ...MiddlewareHandler) {
+	r.bind(name, Constant.DELETE, handler, middlewareHandler...)
 }
 
 // Put function allows the binding of
 // 1) URL and handler
 // 2) URL and HTTP request method "Put"
-func (r *routerGroup) Put(name string, handler Handler) {
-	r.bind(name, Constant.PUT, handler)
+func (r *routerGroup) Put(name string, handler Handler, middlewareHandler ...MiddlewareHandler) {
+	r.bind(name, Constant.PUT, handler, middlewareHandler...)
 }
 
 // Patch function allows the binding of
 // 1) URL and handler
 // 2) URL and HTTP request method "Patch"
-func (r *routerGroup) Patch(name string, handler Handler) {
-	r.bind(name, Constant.PATCH, handler)
+func (r *routerGroup) Patch(name string, handler Handler, middlewareHandler ...MiddlewareHandler) {
+	r.bind(name, Constant.PATCH, handler, middlewareHandler...)
 }
 
 // Options function allows the binding of
 // 1) URL and handler
 // 2) URL and HTTP request method "Options"
-func (r *routerGroup) Options(name string, handler Handler) {
-	r.bind(name, Constant.OPTIONS, handler)
+func (r *routerGroup) Options(name string, handler Handler, middlewareHandler ...MiddlewareHandler) {
+	r.bind(name, Constant.OPTIONS, handler, middlewareHandler...)
 }
 
 // Head function allows the binding of
 // 1) URL and handler
 // 2) URL and HTTP request method "Head"
-func (r *routerGroup) Head(name string, handler Handler) {
-	r.bind(name, Constant.HEAD, handler)
+func (r *routerGroup) Head(name string, handler Handler, middlewareHandler ...MiddlewareHandler) {
+	r.bind(name, Constant.HEAD, handler, middlewareHandler...)
 }
 
 // Engine the main engine for web framework
@@ -182,13 +197,13 @@ func (e *Engine) httpRequestHandle(w http.ResponseWriter, r *http.Request) {
 
 			// 1. check if it is ANY method matching
 			if handle, ok := g.handleFuncMap[node.Path][Constant.ANY]; ok {
-				g.processHandler(ctx, handle)
+				g.processHandler(routerName, Constant.ANY, ctx, handle)
 				return
 			}
 
 			// 2. check if it is other method matching
 			if handle, ok := g.handleFuncMap[node.Path][method]; ok {
-				g.processHandler(ctx, handle)
+				g.processHandler(routerName, method, ctx, handle)
 				return
 			}
 			// if URL exists, but the method does not, return 405

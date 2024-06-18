@@ -6,11 +6,19 @@ import (
 	context "github.com/Jerry20000730/Gjango/web/Context"
 )
 
+func BlogLog(next web.Handler) web.Handler {
+	return func(ctx *context.Context) {
+		fmt.Println("BlogLog begin for get")
+		next(ctx)
+		fmt.Println("BlogLog end")
+	}
+}
+
 func main() {
 	engine := web.NewEngine()
 	fmt.Println("[INFO] Gjango is listening on port: " + engine.GetPort())
 	g := engine.Router.NewGroup("user")
-	g.MiddlewareBind(func(next web.Handler) web.Handler {
+	g.MiddlewareRegister(func(next web.Handler) web.Handler {
 		return func(ctx *context.Context) {
 			// pre-middleware
 			fmt.Println("Pre Handler")
@@ -21,7 +29,7 @@ func main() {
 	})
 	g.Get("/hello/get", func(ctx *context.Context) {
 		_, _ = fmt.Fprintf(ctx.W, "<h1>Welcome to Gjango</h1> <p>You have successfully initiate the Gjango web framework</p>")
-	})
+	}, BlogLog)
 	g.Post("/hello", func(ctx *context.Context) {
 		_, _ = fmt.Fprintf(ctx.W, "<h1>Welcome to Gjango</h1> <p>This is a POST request and you have successfully initiate the Gjango web framework</p>")
 	})
