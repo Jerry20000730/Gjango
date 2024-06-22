@@ -24,13 +24,17 @@ jobs:
     - name: Check Go Installation
       run: go version
 
-    - name: Get Dependencies for web
-      run: go mod tidy
-      working-directory: ./web
+    - name: Get dependencies for web
+      run: |
+        go get -u ./...
+        go mod tidy
+      working-directory: ./web  # 确保所有依赖项已下载并且是最新的
 
-    - name: Get Dependencies for blog
-      run: go mod tidy
-      working-directory: ./blog
+    - name: Get dependencies for blog
+      run: |
+        go get -u ./...
+        go mod tidy
+      working-directory: ./blog  # 确保所有依赖项已下载并且是最新的
 
     - name: Build
       run: go build -v
