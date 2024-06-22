@@ -51,3 +51,17 @@ In this part, the web framework should support
 
 - [x] Support registering a general middleware (pre-middleware and post-middleware)
 - [x] Support registering a router-group-specific middleware
+
+## Page Rendering
+During the response, the interface should support returning
+
+- HTML (support template)
+- JSON
+- XML
+
+### HTML
+In order to render the html, we must clarify on several element in the HTTP response so that the user can get the content and render it in the frontend.
+
+1. `content-type = text/html; charset-utf-8`
+2. Template elements
+3. Data/context that need to display on the HTML

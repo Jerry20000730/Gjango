@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Jerry20000730/Gjango/web"
 	context "github.com/Jerry20000730/Gjango/web/Context"
+	"net/http"
 )
 
 func BlogLog(next web.Handler) web.Handler {
@@ -38,6 +39,9 @@ func main() {
 	})
 	g.Get("/hello/*/get", func(ctx *context.Context) {
 		_, _ = fmt.Fprintf(ctx.W, "<h1>Welcome to Gjango</h1> <p>This is a GET request and I don't know what you are looking for</p>")
+	})
+	g.Get("/get/html", func(ctx *context.Context) {
+		_ = ctx.HTML(http.StatusOK, "<h1>HTML Template</h1><p>This is a template for html and test if the html is successfully returned and rendered</p>")
 	})
 	engine.Run()
 }
