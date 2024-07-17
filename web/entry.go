@@ -4,11 +4,15 @@ import (
 	"fmt"
 	"github.com/Jerry20000730/Gjango/web/Constant"
 	"github.com/Jerry20000730/Gjango/web/Context"
+	"github.com/Jerry20000730/Gjango/web/File"
 	"github.com/Jerry20000730/Gjango/web/Logic"
+	"github.com/Jerry20000730/Gjango/web/Render"
 	"github.com/Jerry20000730/Gjango/web/Utils"
+	"html/template"
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 )
 
 // Handler the abstract backend logic function when router match the pattern of the URL
@@ -151,24 +155,35 @@ func (r *routerGroup) Head(name string, handler Handler, middlewareHandler ...Mi
 
 // Engine the main engine for web framework
 type Engine struct {
-	port   string
-	Router router
+	port          string
+	pool          sync.Pool
+	Router        router
+	HTMLPreloader Render.HTMLPreloader
+	FileManager   File.FileManager
 }
 
 // NewEngine create a new web framework engine with default port of 8321
 func NewEngine() *Engine {
-	return &Engine{
+	engine := &Engine{
 		port:   "8321",
 		Router: router{},
 	}
+	engine.pool.New = func() any {
+		return &context.Context{}
+	}
+	return engine
 }
 
 // NewEngineWithPort create a new web framework engine with user-defined port
 func NewEngineWithPort(port int) *Engine {
-	return &Engine{
+	engine := &Engine{
 		port:   strconv.Itoa(port),
 		Router: router{},
 	}
+	engine.pool.New = func() any {
+		return &context.Context{}
+	}
+	return engine
 }
 
 // GetPort get the current listening port of the web framework
@@ -176,11 +191,27 @@ func (e *Engine) GetPort() string {
 	return e.port
 }
 
+// ServeHTTP the function that process http request
 func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	e.httpRequestHandle(w, r)
+	ctx := e.pool.Get().(*context.Context)
+	ctx.W = w
+	ctx.R = r
+	e.httpRequestHandle(ctx, w, r)
+	e.pool.Put(ctx)
 }
 
-func (e *Engine) httpRequestHandle(w http.ResponseWriter, r *http.Request) {
+// PreLoadFuncMap the function that pre-read the template.funcmap into the memory
+func (e *Engine) PreLoadFuncMap(funcMap template.FuncMap) {
+	e.HTMLPreloader.FuncMap = funcMap
+}
+
+// PreLoadTemplate the function that pre-read the template (html files) into the memory
+func (e *Engine) PreLoadTemplate(pattern string) {
+	t := template.Must(template.New("").Funcs(e.HTMLPreloader.FuncMap).ParseGlob(pattern))
+	e.HTMLPreloader.Template = t
+}
+
+func (e *Engine) httpRequestHandle(ctx *context.Context, w http.ResponseWriter, r *http.Request) {
 	method := r.Method
 	groups := e.Router.routerGroups
 	for _, g := range groups {
@@ -189,11 +220,6 @@ func (e *Engine) httpRequestHandle(w http.ResponseWriter, r *http.Request) {
 		routerName := Utils.SubStringLast(r.RequestURI, "/"+g.groupName)
 		node := g.treeNode.Get(routerName)
 		if node != nil && node.IsEnd {
-			// route is found
-			ctx := &context.Context{
-				W: w,
-				R: r,
-			}
 
 			// 1. check if it is ANY method matching
 			if handle, ok := g.handleFuncMap[node.Path][Constant.ANY]; ok {

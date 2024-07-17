@@ -60,8 +60,59 @@ During the response, the interface should support returning
 - XML
 
 ### HTML
-In order to render the html, we must clarify on several element in the HTTP response so that the user can get the content and render it in the frontend.
+In order to render the html, we must clarify on several element in the HTTP response so that the browser can identify the content and render it in the frontend.
 
 1. `content-type = text/html; charset-utf-8`
 2. Template elements
 3. Data/context that need to display on the HTML
+
+#### Usage
+```go
+func main() {
+    engine := web.NewEngine()
+    g := engine.Router.NewGroup("user")
+    g.Get("/get/html", func(ctx *context.Context) {
+        err := ctx.HTML(http.StatusOK, "<h1>HTML Template</h1><p>This is a template for html and test if the html is successfully returned and rendered</p>")
+		if err != nil {
+            log.Println(err)
+        }   
+    })
+}
+```
+
+### JSON & XML
+In order to support JSON & XML, we only need to make sure that the content-type is changed
+1. `content-type = application/json; charset=utf-8` for json and `content-type = application/xml charset=utf-8`
+
+#### Usage
+```go
+func main() {
+    engine := web.NewEngine()
+    g := engine.Router.NewGroup("user")
+    g.Get("/json", func(ctx *context.Context) {
+        user := &User{
+            Name: "jerry",
+        }
+		err := ctx.JSON(http.StatusOK, user)
+        if err != nil {
+            log.Println(err)
+        }
+	})
+}
+```
+
+### String
+In order to only display some string on the web, we allow user to pass a specific string with extra arguments specified (like printf), so that the argument can be passed and displayed dynamically on the website.
+1. `content-type = text/plain; charset=utf-8` for string
+2. support dynamic parameter passing
+
+#### Usage
+```go
+func main() {
+    engine := web.NewEngine()
+    g := engine.Router.NewGroup("user")
+    g.Get("/string", func(ctx *context.Context) {
+        _ = ctx.String(http.StatusOK, "Test %s gjango web framework, int can also be passed: %d", "self-designed", 1)
+	})
+}
+```

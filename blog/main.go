@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Jerry20000730/Gjango/web"
 	context "github.com/Jerry20000730/Gjango/web/Context"
+	"log"
 	"net/http"
 )
 
@@ -13,6 +14,10 @@ func BlogLog(next web.Handler) web.Handler {
 		next(ctx)
 		fmt.Println("BlogLog end")
 	}
+}
+
+type User struct {
+	Name string
 }
 
 func main() {
@@ -42,6 +47,54 @@ func main() {
 	})
 	g.Get("/get/html", func(ctx *context.Context) {
 		_ = ctx.HTML(http.StatusOK, "<h1>HTML Template</h1><p>This is a template for html and test if the html is successfully returned and rendered</p>")
+	})
+
+	engine.PreLoadTemplate("template/*.html")
+	g.Get("/template", func(ctx *context.Context) {
+		user := &User{
+			Name: "jerry",
+		}
+		err := ctx.HTMLTemplate(&engine.HTMLPreloader, http.StatusOK, "login.html", user)
+		if err != nil {
+			log.Println(err)
+		}
+	})
+
+	g.Get("/json", func(ctx *context.Context) {
+		user := &User{
+			Name: "jerry",
+		}
+		err := ctx.JSON(http.StatusOK, user)
+		if err != nil {
+			log.Println(err)
+		}
+	})
+
+	g.Get("/xml", func(ctx *context.Context) {
+		user := &User{
+			Name: "jerry",
+		}
+		err := ctx.XML(http.StatusOK, user)
+		if err != nil {
+			log.Println(err)
+		}
+	})
+
+	g.Get("/download", func(ctx *context.Context) {
+		engine.FileManager.FileAttachment(ctx, "template/test.xlsx", "xxxx.xlsx")
+	})
+	g.Get("/fs", func(ctx *context.Context) {
+		engine.FileManager.FileFromFileSystem(ctx, "test.xlsx", http.Dir("template"))
+	})
+	g.Get("/redirect", func(ctx *context.Context) {
+		// status must be 302
+		err := ctx.Redirect(http.StatusFound, "/user/template")
+		if err != nil {
+			log.Println(err)
+		}
+	})
+	g.Get("/string", func(ctx *context.Context) {
+		_ = ctx.String(http.StatusOK, "Test %s gjango web framework, int can also be passed: %d", "self-designed", 1)
 	})
 	engine.Run()
 }
