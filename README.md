@@ -73,7 +73,7 @@ func main() {
     g := engine.Router.NewGroup("user")
     g.Get("/get/html", func(ctx *context.Context) {
         err := ctx.HTML(http.StatusOK, "<h1>HTML Template</h1><p>This is a template for html and test if the html is successfully returned and rendered</p>")
-		if err != nil {
+        if err != nil {
             log.Println(err)
         }   
     })
@@ -93,11 +93,11 @@ func main() {
         user := &User{
             Name: "jerry",
         }
-		err := ctx.JSON(http.StatusOK, user)
+	err := ctx.JSON(http.StatusOK, user)
         if err != nil {
             log.Println(err)
         }
-	})
+    })
 }
 ```
 
@@ -112,7 +112,7 @@ func main() {
     engine := web.NewEngine()
     g := engine.Router.NewGroup("user")
     g.Get("/string", func(ctx *context.Context) {
-        _ = ctx.String(http.StatusOK, "Test %s gjango web framework, int can also be passed: %d", "self-designed", 1)
-	})
+	err := ctx.String(http.StatusOK, "Test %s gjango web framework, int can also be passed: %d", "self-designed", 1)
+    })
 }
 ```
