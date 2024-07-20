@@ -1,36 +1,42 @@
+// Package Render provides functionality to render HTML content.
 package Render
 
 import (
+	"github.com/Jerry20000730/Gjango/web/Constant"
 	"html/template"
 	"net/http"
 )
 
-const HTML_HEADER_CONTENT_TYPE = "text/html; charset=utf-8"
-
+// HTMLRender is a struct for rendering HTML templates or strings.
 type HTMLRender struct {
-	Template   *template.Template
-	Name       string
-	Data       any
-	IsTemplate bool
+	Template   *template.Template // Template is the HTML template to be rendered.
+	Name       string             // Name is the template name for lookup in case of multiple templates.
+	Data       any                // Data contains the data to be passed to the template.
+	IsTemplate bool               // IsTemplate indicates whether to render a template or a plain string.
 }
 
+// HTMLPreloader is a struct to preload templates with specific functions.
 type HTMLPreloader struct {
-	FuncMap  template.FuncMap
-	Template *template.Template
+	FuncMap  template.FuncMap   // FuncMap is a map of functions to be used in templates.
+	Template *template.Template // Template is the preloaded template.
 }
 
+// Render writes the rendered template or string to the http.ResponseWriter.
+// If IsTemplate is false, it writes Data as a plain string.
+// Otherwise, it executes the template with the provided data.
 func (r HTMLRender) Render(w http.ResponseWriter) error {
-	r.WriteContentType(w)
+	r.WriteContentType(w) // Set the Content-Type header.
 	if !r.IsTemplate {
-		_, err := w.Write([]byte(r.Data.(string)))
+		_, err := w.Write([]byte(r.Data.(string))) // Write the plain string.
 		return err
 	}
-	err := r.Template.ExecuteTemplate(w, r.Name, r.Data)
+	err := r.Template.ExecuteTemplate(w, r.Name, r.Data) // Execute the template.
 	return err
 }
 
+// WriteContentType sets the Content-Type header for the response.
 func (r HTMLRender) WriteContentType(w http.ResponseWriter) {
-	writeContentType(w, HTML_HEADER_CONTENT_TYPE)
+	writeContentType(w, Constant.HTML_HEADER_CONTENT_TYPE)
 }
 
 //func (r *HTMLRender) PreLoadTemplate(ctx *context.Context, statusCode int, name string, data any) error {

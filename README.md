@@ -116,3 +116,16 @@ func main() {
     })
 }
 ```
+
+## Parameter Processing
+Parameters are essential in passing the information, enabling the transfer of data between different parts of a web application. This can happen in various contexts, such as between the client and server or within different components of the application. 
+
+Here are some examples this web framework can support:
+
+### URL parameters
+also known as query strings, are commonly used to pass information in a URL. They follow the ? character in a URL and consist of key-value pairs, for example:
+
+```text
+http://xxx.com/user/add?id=1&age=20
+```
+

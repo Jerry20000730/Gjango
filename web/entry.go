@@ -217,7 +217,7 @@ func (e *Engine) httpRequestHandle(ctx *context.Context, w http.ResponseWriter, 
 	for _, g := range groups {
 		// to get the name under the group, like /hello, /get/1 so that it can be found
 		// in the tree
-		routerName := Utils.SubStringLast(r.RequestURI, "/"+g.groupName)
+		routerName := Utils.SubStringLast(r.URL.Path, "/"+g.groupName)
 		node := g.treeNode.Get(routerName)
 		if node != nil && node.IsEnd {
 
