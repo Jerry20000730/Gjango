@@ -17,7 +17,10 @@ func BlogLog(next web.Handler) web.Handler {
 }
 
 type User struct {
-	Name string
+	Name      string   `xml:"name" json:"name"`
+	Age       int      `xml:"age" json:"age"`
+	Addresses []string `xml:"addresses" json:"addresses"`
+	Email     string   `xml:"email" json:"email" gjango:"required"`
 }
 
 func main() {
@@ -95,6 +98,44 @@ func main() {
 	})
 	g.Get("/string", func(ctx *context.Context) {
 		_ = ctx.String(http.StatusOK, "Test %s gjango web framework, int can also be passed: %d", "self-designed", 1)
+	})
+	g.Get("/queryMap", func(ctx *context.Context) {
+		queryMap, _ := ctx.GetQueryMap("user")
+		ctx.JSON(http.StatusOK, queryMap)
+	})
+	g.Post("/formPost", func(ctx *context.Context) {
+		m, _ := ctx.GetPostFormArray("name")
+		ctx.JSON(http.StatusOK, m)
+	})
+	g.Post("/formPostMap", func(ctx *context.Context) {
+		m, _ := ctx.GetPostFormMap("user")
+		ctx.JSON(http.StatusOK, m)
+	})
+	g.Post("/file", func(ctx *context.Context) {
+		file, err := ctx.FormFile("file")
+		if err != nil {
+			log.Println(err)
+		}
+		err = ctx.SaveUploadedFile(file, "./upload/"+file.Filename)
+		if err != nil {
+			log.Println(err)
+		}
+	})
+	g.Post("/multiFile", func(ctx *context.Context) {
+		m, _ := ctx.GetPostFormMap("user")
+		headers := ctx.FormFiles("file")
+		for _, file := range headers {
+			ctx.SaveUploadedFile(file, "./upload/"+file.Filename)
+		}
+		ctx.JSON(http.StatusOK, m)
+	})
+	g.Post("/jsonParse", func(ctx *context.Context) {
+		user := &User{}
+		err := ctx.ParseJSON(user, true, true)
+		if err != nil {
+			log.Println(err)
+		}
+		ctx.JSON(http.StatusOK, user)
 	})
 	engine.Run()
 }

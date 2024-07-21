@@ -129,3 +129,77 @@ also known as query strings, are commonly used to pass information in a URL. The
 http://xxx.com/user/add?id=1&age=20
 ```
 
+#### map parameters
+In this case, the parameters are passed in the form of a map, so that the user can easily access the parameters by the key.
+This approach allows for a structured and easily parseable method of passing complex and nested data through URLs. 
+It is particularly useful for filtering, searching, or specifying multiple attributes of a resource in a single request.
+
+```text
+http://xxx.com/user/queryMap?user[id]=1&user[age]=20
+```
+
+##### Usage
+```go
+// http://xxx.com/user/queryMap?user[id]=1&user[age]=29
+g.Get("/queryMap", func(ctx *context.Context) {
+    m, ok := ctx.QueryMap("user")
+    ctx.JSON(http.StatusOK, m)
+})
+```
+
+### Post form parameters
+Post form parameters are used to send data to the server in the body of the HTTP request. They are commonly used in forms and are sent as key-value pairs.
+Web application use form to perform various tasks, such as user authentication, data submission, and more.
+
+#### Usage
+```go
+g.Post("/formPost", func(ctx *context.Context) {
+    m, _ := ctx.GetPostFormArray("name")
+    ctx.JSON(http.StatusOK, m)
+})
+```
+
+### Post form file
+Post form file is used to upload files to the server. It is commonly used in web applications to allow users to upload images, videos, documents, and other types of files.
+
+#### Usage
+You can define the folder for uploaded file in the `SaveUploadedFile` function
+```go
+g.Post("/file", func(ctx *context.Context) {
+    file, err := ctx.FormFile("file")
+    if err != nil {
+        log.Println(err)
+    }
+    err = ctx.SaveUploadedFile(file, "./upload/"+file.Filename)
+    if err != nil {
+        log.Println(err)
+    }
+})
+```
+
+The framework also allows for multiple file uploads at once. The user can specify the file in the body of the request, and the framework will save the file to the specified folder.
+```go
+g.Post("/multiFile", func(ctx *context.Context) {
+    m, _ := ctx.GetPostFormMap("user")
+    // here, you specify the key of the file 
+    // inside the request body 
+    // e.g., if the key is "file", then here you should enter "file"
+	headers := ctx.FormFiles("file")
+    for _, file := range headers {
+        ctx.SaveUploadedFile(file, "./upload/"+file.Filename)
+    }
+    ctx.JSON(http.StatusOK, m)
+})
+```
+
+### JSON Parameters
+JSON parameters are used to send data to the server in the body of the HTTP request. They are commonly used in APIs and are sent as JSON objects.
+When sending the request:
+- header: "content-type: application/json"
+- POST with parameters
+
+The framework should support parsing the JSON parameters and returning the JSON response.
+
+Apart from the above, the framework should also support:
+
+- validate the parameter (mostly if the struct specify the parameter, while the JSON object parsed has not include such parameter)

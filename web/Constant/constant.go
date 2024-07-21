@@ -22,3 +22,5 @@ const STRING_HEADER_CONTENT_TYPE = "text/plain; charset=utf-8"
 
 // XML_HEADER defines the Content-Type header for XML responses.
 const XML_HEADER = "application/xml; charset=utf-8"
+
+const DEFAULT_MAX_MEMORY = 32 << 20 // 32 MB
